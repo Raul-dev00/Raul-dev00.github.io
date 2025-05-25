@@ -68,4 +68,4 @@ Web Audio API ile ses yönetimi
 
 Responsive: Tam ekran, video arkaplan ve mobil uyumlu grid
 
-Keyifli kelime avları!
+# Keyifli kelime avları!
