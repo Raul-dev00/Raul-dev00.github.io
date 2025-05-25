@@ -1,4 +1,3 @@
-# Raul-dev00.github.io
 # Claustrowordia
 
 Claustrowordia, tarayıcı üzerinde çalışan sürükle-bırak temelli bir kelime bulma oyunudur. 7×7’lik altıgen hücrelerden oluşan bir tahta üzerinde, panelden harf seçip boş hücrelere bırakarak yatay ve dikey anlamlı kelimeler oluşturur, puan toplarsınız.
@@ -68,6 +67,8 @@ Web Audio API ile ses yönetimi
 
 Responsive: Tam ekran, video arkaplan ve mobil uyumlu grid
 
+# Oyundan Görüntüler
+
 ![Ekran görüntüsü 2025-05-25 192310](https://github.com/user-attachments/assets/a3cb53df-f01c-461a-8720-a450f0548617)
 
 ![Ekran görüntüsü 2025-05-25 192317](https://github.com/user-attachments/assets/0081b858-8fc6-40b4-9bb6-221117da963e)
@@ -76,7 +77,7 @@ Responsive: Tam ekran, video arkaplan ve mobil uyumlu grid
 
 ![Ekran görüntüsü 2025-05-25 192446](https://github.com/user-attachments/assets/3e05a641-5be8-4bd5-8b1c-cdeed1cf8cc0)
 
-#Oynanış Videosu
+# Oynanış Videosu
 https://www.youtube.com/watch?v=Ae-gq3AkgAo
 
 # Keyifli kelime avları!
