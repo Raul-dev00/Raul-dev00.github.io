@@ -1,9 +1,9 @@
 # Raul-dev00.github.io
-Claustrowordia
+# Claustrowordia
 
 Claustrowordia, tarayıcı üzerinde çalışan sürükle-bırak temelli bir kelime bulma oyunudur. 7×7’lik altıgen hücrelerden oluşan bir tahta üzerinde, panelden harf seçip boş hücrelere bırakarak yatay ve dikey anlamlı kelimeler oluşturur, puan toplarsınız.
 
-Oyun Özellikleri
+# Oyun Özellikleri
 7×7 Altıgen Hücreli Tahta
 
 Bazı hücreler her oyunda farklı harflerle otomatik doldurulur (sabit hücreler)
