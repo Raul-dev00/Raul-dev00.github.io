@@ -32,7 +32,7 @@ Start / Nasıl Oynanır Ekranı
 
 “Oyna” ve “Nasıl Oynanır?” seçenekleriyle hızlı başlangıç
 
-Nasıl Oynanır
+# Nasıl Oynanır
 “Oyna” butonuna tıklayarak menüyü kapatın.
 
 Sağ alt köşedeki harf rafından bir harfi fareyle sürükleyip boş bir hücreye bırakın.
@@ -43,19 +43,19 @@ Her yeni kelime için +10 puan kazanılır ve skor ekranı güncellenir.
 
 Harf rafınız her hamleden sonra yenilenir—oyun sonsuz devam eder.
 
-Kontroller
+# Kontroller
 Fare ile sürükle-bırak: Harfleri taşıma
 
 🔊 / 🔇 butonu: Arkaplan müziğini açıp kapama
 
 Tekrar tıklama: Harf tıklama sesini tetikleme
 
-Zorluk
+# Zorluk
 Sürekli artan bir zorluk yok; amacınız ne kadar çok kelime keşfederseniz o kadar yüksek puan toplamaktır.
 
 Oyun hızından ziyade kelime bulma stratejisi öne çıkar.
 
-Teknik Detaylar
+# Teknik Detaylar
 HTML5 + CSS ile yapı ve düzen
 
 Saf JavaScript
