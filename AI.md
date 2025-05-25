@@ -149,3 +149,68 @@ Hangisini tercih edersin?
 
 Şunu dedin:
 tamam şimdi oldu
+
+*****************************************************************************
+
+her click olayında ses olsun
+
+ChatGPT:
+✅ 1. Ses dosyasının HTML’e eklenmesi
+Yer: </body> kapanışından hemen önce
+
+html
+Kopyala
+Düzenle
+<audio id="clickSound">
+  <source src="click.mp3" type="audio/mpeg">
+</audio>
+✅ 2. Tüm sayfa tıklamalarında sesi çalma kodu
+Yer: <script> bloğunun en sonunda
+
+js
+Kopyala
+Düzenle
+document.addEventListener('click', () => {
+  const sound = document.getElementById('clickSound');
+  sound.currentTime = 0;
+  sound.play().catch(() => {});
+});
+Bu iki bölüm sayesinde sayfada her tıklamada click.mp3 dosyası çalınır.
+Dosyanın gerçekten aynı klasörde olduğuna emin ol — aksi takdirde ses çalmaz ama hata da vermez.
+
+********************************************************************************
+
+kullanıcı kelime girdiğinde ses çıkmasını nasıl sağlarım ?
+
+
+🔧 Yapılacaklar:
+Aşağıdaki iki parçayı senin için eklemen yeterli:
+
+✅ 1. HTML’ye ses dosyasını ekle (mümkünse <body> sonuna):
+html
+Kopyala
+Düzenle
+<audio id="wordSound">
+  <source src="found.mp3" type="audio/mpeg">
+</audio>
+Bu found.mp3 dosyası, kelime bulunduğunda çalınacak. Dosyayı HTML ile aynı klasöre koymayı unutma.
+
+✅ 2. checkWords() fonksiyonunun içine şu satırları ekle:
+Bulunan yer:
+
+js
+Kopyala
+Düzenle
+newlyFound.forEach(word => foundWordsSet.add(word));
+Hemen altına ekle:
+
+js
+Kopyala
+Düzenle
+if (newlyFound.length > 0) {
+  const wordSound = document.getElementById('wordSound');
+  if (wordSound) {
+    wordSound.currentTime = 0;
+    wordSound.play().catch(() => {});
+  }
+}
