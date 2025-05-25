@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Claustrowordia</title>
+  <style>
+    /*
+    GENEL SAYFA GÖRÜNÜM ÖZELLİKLERİ
+    */
+     body {
+      height: 100vh;
+      margin: 0;
+    }
+    /*
+    DİV'LERİN GÖRÜNÜM DÜZENLERİ VE KONUMLARI
+    */
+    #container { display: flex; min-height: 100vh; }
+    #leftPanel { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+    #gameBoard { display: grid; grid-template-columns: repeat(7, 60px); gap: 2px; margin: 20px 0; }
+    #letterRack { display: flex; justify-content: center; margin: 10px; gap: 5px; }
+    #rightPanel { width: 200px; padding: 10px; background: #333; border-left: 2px solid #555; }
+    #wordListDisplay { margin-top: 10px; text-align: left; font-size: 18px; color:white}
+    /*
+    HÜCRE VE HARF KUTULARI GÖRÜNÜM ÖZELLİKLERİ
+    */
+    .cell, .tile {
+      width: 60px;
+      height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 18px;
+      background: #444;
+      color: #fff;
+      user-select: none;        /*HÜCRENİN SEÇİLEMEMESİ*/
+      clip-path: polygon(20% 0%, 80% 0%, 100% 50%, 80% 100%, 20% 100%, 0% 50%);     /*ALTIGEN*/
+    }
+    .cell {
+      border: 1px solid #666;
+    }
+    .tile {
+      background: #666;
+      cursor: grab;
+    }
+    .tile:active {
+      cursor: grabbing;
+    }
+    /*SABİT HÜCRELER*/
+    .cell[data-fixed="true"] {
+      background-color: #666;
+      outline: 2px solid orange;
+      cursor: not-allowed;
+    }
+  </style>
+</head>
+
+<!-- 
+BAŞLANGIÇ EKRANI 
+-->
+<div id="startScreen" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); color: white; z-index: 30; display: flex; flex-direction: column; justify-content: center; align-items: center;">
+  <h1 style="font-size: 48px; margin-bottom: 20px;">Claustrowordia</h1>
+  <p style="font-size: 20px; max-width: 500px; text-align: center; margin-bottom: 30px;">
+    Harfleri sürükleyip tabloya bırak. Anlamlı kelimeler oluştur ve puan topla!
+  </p>
+  <div>
+    <button onclick="oyunuBaslat()" style="padding: 12px 24px; font-size: 18px; margin: 10px;">Oyna</button>
+    <button onclick="alert('Sürükle ve bırak yöntemiyle harfleri yerleştir. Yatay ve dikey anlamlı kelimeler oluştur. Yerleştirdiğin her harfin yerine başka bir harf çıkar.')"
+      style="padding: 12px 24px; font-size: 18px; margin: 10px;">Nasıl Oynanır?</button>
+  </div>
+</div>
+
+<body>
+  <!-- 
+  ARKAPLAN MÜZİĞİ VE KONTROL BUTONU 
+  -->
+  <audio id="bgMusic" autoplay loop>
+    <source src="oyun_muzik(jungle).mp3" type="audio/mpeg">
+  </audio>
+  <button id="muteBtn" style="position: fixed; top: 10px; left: 10px; z-index: 10; padding: 6px 12px; font-size: 14px; cursor: pointer;">🔊</button>
+
+  <!-- 
+  ARKAPLAN VİDEOSU 
+  -->
+  <video autoplay muted loop id="bgVideo"
+    style="position: fixed; right: 0; bottom: 0; min-width: 100%; min-height: 100%; z-index: -1; object-fit: cover;">
+    <source src="arkaplan.mp4" type="video/mp4">
+  </video>
+
+  <!--
+   CANVAS 
+  -->
+  <canvas id="canvasLayer" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none;"></canvas>
+
+  <!--
+   OYUN ALANI VE KELİME PANELİ
+  -->
+  <div id="container">
+    <div id="leftPanel">
+      <h1 style="color: white; background: rgba(0,0,0,0.6); padding: 4px 10px; border-radius: 6px; font-size: 50px;">Claustrowordia</h1>
+      <p style="color: white; background: rgba(0,0,0,0.6); padding: 4px 10px; border-radius: 6px; font-size: 20px;">Harfleri sürükleyip kutulara bırak!</p>
+      <div id="gameBoard"></div>
+      <div id="letterRack"></div>
+    </div>
+    <div id="rightPanel">
+      <h3 style="color:#fff; font-size: 23px;">Bulunan Kelimeler</h3>
+      <div id="wordListDisplay"></div>
+    </div>
+  </div>
+
+  <!-- 
+  SKOR TABLOSU
+  -->
+  <div id="scoreDisplay" style="position: fixed; top: 50px; left: 10px; color: white; background: rgba(0,0,0,0.6); padding: 4px 10px; border-radius: 6px; font-size: 50px; z-index: 10; font-weight: bold;">Skor: 0</div>
+
+  <script>
+    /*
+    SES AÇMA / KAPAMA
+    */
+    const arkaPlanMuzigi = document.getElementById('bgMusic');
+    const sessizlestirmeButonu = document.getElementById('muteBtn');
+    sessizlestirmeButonu.addEventListener('click', () => {
+      arkaPlanMuzigi.muted = !arkaPlanMuzigi.muted;
+      sessizlestirmeButonu.textContent = arkaPlanMuzigi.muted ? '🔇' : '🔊';
+    });
+    arkaPlanMuzigi.volume = 0.3; // %30 ses
+
+    /*
+    OYUN TAHTASI VE RASTGELE HARFLER
+    */
+    const tahtaBoyutu = 7;
+    const tahta = Array.from({ length: tahtaBoyutu }, () => Array(tahtaBoyutu).fill(''));
+    const rafHarfler = [];
+    const turkceHarfler = ['A','B','C','Ç','D','E','F','G','Ğ','H','I','İ','J','K','L','M','N','O','Ö','P','R','S','Ş','T','U','Ü','V','Y','Z'];
+
+    /*
+    KELİME LİSTESİ VE BULUNAN KELİMELER
+    */
+    const kelimeListesi = ["ADA", "ADIM", "AĞAÇ", "AKIL", "AKSU", "ALAN", "ALTIN", "ANA", "ANLAM", "ARABA",
+    "ARKA", "ARMUT", "ASLAN", "AT", "AV", "AY", "AYDIN", "AZ", "AZAL", "AZIM",
+    "BACAK", "BAHÇE", "BALIK", "BALKON", "BARİ", "BASKI", "BATAK", "BAYAN", "BAYRAK", "BEBEK",
+    "BEKAR", "BELGE", "BEN", "BERAT", "BESİN", "BEYAZ", "BİLEK", "BİLGİ", "BİRAZ", "BİRİ",
+    "BOYA", "BU", "BULUT", "BÜTÜN", "CAN", "CEVAP", "CEYLAN", "CİDDİ", "CİĞER", "CİNS",
+    "ÇABUK", "ÇANTA", "ÇEŞME", "ÇEVRE", "ÇİFT", "ÇİLEK", "ÇİN", "ÇOCUK", "ÇORAP", "DAĞ",
+    "DAL", "DAMLAT", "DANIŞ", "DAR", "DAVET", "DAYI", "DEFNE", "DELİ", "DEMİR", "DENİZ",
+    "DERE", "DEVRİM", "DİKEN", "DİL", "DİNAMİK", "DİREK", "DİŞ", "DOKU", "DOLAP", "DOST",
+    "DUA", "DUVAR", "DÜNYA", "EDEBİ", "EĞİTİM", "EKMEK", "EL", "ELMA", "EMEK", "EMİR",
+    "EN", "ERKEK", "ESKİ", "EV", "EVLAT", "FARK", "FASULYE", "FENER", "FİKİR", "FİLM",
+    "GAZETE", "GELİN", "GEMİ", "GENİŞ", "GERÇEK", "GEYİK", "GİDER", "GÖK", "GÖLGE", "GÖREV",
+    "GÖZ", "GÜL", "GÜNEŞ", "GÜVEN", "HABER", "HALI", "HAMUR", "HANIM", "HAYAL", "HAYVAN",
+    "HEDEF", "HELAL", "HESAP", "HIRSIZ", "HİKAYE", "HİSAR", "HUZUR", "IŞIK", "İÇECEK", "İKLİM",
+    "İLAÇ", "İLHAM", "İMAM", "İNSAN", "İSTEK", "İŞ", "İŞARET", "İTİBAR", "İZİN", "JANDARMA",
+    "KALEM", "KALKAN", "KAMU", "KANAT", "KAPI", "KAR", "KARDEŞ", "KARTAL", "KASA", "KASK",
+    "KAVAK", "KAVGA", "KAZA", "KEDİ", "KELİME", "KEMİK", "KENAR", "KEREVİZ", "KESKİN", "KIŞ",
+    "KİMSE", "KİTAP", "KIZ", "KOALA", "KOL", "KÖPEK", "KÖR", "KÖY", "KULE", "KUM",
+    "KURT", "KÜÇÜK", "LAMBALI", "LİMON", "MAHALLE", "MAKAS", "MANDALİN", "MANTAR", "MASA", "MEKTUP",
+    "MEŞE", "MİKROP", "MODA", "MUZ", "NAMAZ", "NEFES", "NEM", "NİSAN", "NOKTA", "NUR",
+    "OCAK", "ODA", "OKUL", "OLAY", "OMUZ", "ONA", "ORADA", "ORMAN", "OTOBÜS", "OYUN",
+    "PANO", "PARA", "PARK", "PATATES", "PENCERE", "PERDE", "PİLAV", "PİYANO", "POLİS", "PORTAKAL",
+    "RADYO", "RENK", "RESİM", "ROKET", "SABAH", "SAÇ", "SAHİL", "SAKİN", "SALATA", "SANDALYE",
+    "SARMAŞIK", "SAYFA", "SEN", "SEPET", "SICAK", "SİLAH", "SİNEMA", "SIRA", "SOBA", "SOĞUK",
+    "SOKAK", "SOMA", "SORDU", "SORU", "SU", "SÜT", "ŞAFAK", "ŞANS", "ŞAPKA", "ŞARKI",
+    "ŞEKER", "ŞEMSİYE", "ŞERİT", "ŞİİR", "ŞİKAYET", "ŞİMŞEK", "ŞİRAZ", "ŞOFÖR", "TABAK", "TAKIM",
+    "TAKSİ", "TAMİR", "TANRI", "TARİH", "TAŞ", "TAVUK", "TEKME", "TELEFON", "TELEVİZYON", "TENCERE",
+    "TURUNCU", "UÇAK", "UĞUR", "ULUS", "UMUT", "UNUT", "UYGUN", "UYKU", "UZAK", "ÜÇGEN",
+    "ÜLKE", "ÜMİT", "ÜNİVERSİTE", "ÜRETİM", "ÜST", "ÜTÜ", "VAZGEÇ", "VEDA", "VELİ", "VİRAJ",
+    "VİZE", "YAĞMUR", "YAKA", "YALAN", "YAMAÇ", "YANGIN", "YAPRAK", "YARIN", "YAZ", "YEMEK",
+    "YER", "YILDIZ", "YOL", "YUMURTA", "ZAMANI", "ZARAR", "ZENGİN", "ZEYTİN", "ZİNCİR", "ZORLU", "ABLA", 
+    "AÇLIK", "AĞIRLIK", "AHŞAP", "AKARYAKIT", "AKORT", "ALBÜM", "ALEV", "ALGI", "ALIN",
+    "ALTLIK", "AMİGO", "ANAHTAR", "ANATOMİ", "ANDIR", "ANİMASYON", "ANTRENMAN", "ARITMA", "ASKER", "ASMA",
+    "ATAK", "AVANS", "AYAKKABI", "AYNA", "AZİZ", "BABACAN", "BAĞIŞ", "BAHAR", "BAKIR", "BALON",
+    "BANKA", "BARDAK", "BASINÇ", "BATI", "BAYAT", "BEDEL", "BEĞENİ", "BEŞİK", "BETON", "BİLGİSAYAR",
+    "BİLEZİK", "BİRİNCİ", "BİTKİ", "BLOK", "BOŞLUK", "BOYA", "BÖLGE", "BUHAR", "BUZUL", "BÜRO",
+    "BÜTÇE", "CADDE", "CAMİ", "CANKURTARAN", "CEBİR", "CEVİZ", "CİRO", "ÇADIR", "ÇAMAŞIR", "ÇARIK",
+    "ÇATAL", "ÇELİK", "ÇİZGİ", "ÇÖP", "ÇUKUR", "DAKİKA", "DALGA", "DARBE", "DAVRANIŞ", "DAYANIK",
+    "DEĞER", "DEMET", "DERGİ", "DERİN", "DİKİŞ", "DİLİM", "DİNAMO", "DİREKSİYON", "DİZAYN", "DOĞA",
+    "DOKTOR", "DOLAR", "DONDURMA", "DONMA", "DUDAK", "DUVAR", "DÜĞME", "EDEBİYAT", "EKLEK", "EKMEKÇİ",
+    "ELDİVEN", "ELEKTRİK", "ELMAS", "ELVAN", "EMAYE", "EMNİYET", "ENFEKSİYON", "ENSE", "ERGEN", "ERGİN",
+    "ESANS", "ESER", "ETKİ", "FARİZ", "FASIL", "FELSEFE", "FENERBAHÇE", "FİKİR", "FİLİZ", "FİLTRE",
+    "FIRIN", "FISTIK", "FLORÜR", "FORM", "FOTOĞRAF", "FREN", "FUAR", "GARDROP", "GARNİTÜR", "GAYE",
+    "GECİKME", "GEMİCİ", "GENETİK", "GENİŞLİK", "GERİLİM", "GEYİK", "GIDA", "GİDER", "GİYSİ", "GÖBEK",
+    "GÖL", "GÖMLEK", "GÖREV", "GÖZLÜK", "GRUP", "GÜBRE", "GÜÇLÜ", "GÜMÜŞ", "GÜNLÜK", "GÜRÜLTÜ",
+    "HACİM", "HAFIZA", "HALAT", "HALLER", "HAMUR", "HARİTA", "HASAT", "HAVLU", "HAYALET", "HAYAT",
+    "HİDROLİK", "HİKAYE", "HİZMET", "HOCA", "HOPARLÖR", "HUKUK", "HURDA", "IŞILTI", "IŞIN", "IŞITMA",
+    "IŞKIRA", "İBADET", "İÇECEKLER", "İÇERİK", "İÇMEK", "İFADE", "İHLAL", "İKAZ", "İKLİMSEL", "İLAHİ",
+    "İLÇE", "İLGİ", "İLHAM", "İLTİFAT", "İMGE", "İMKAN", "İMZA", "İNANÇ", "İNFAZ", "İNŞAAT",
+    "İPLİK", "İRADE", "İSKELE", "İSLAM", "İSTASYON", "İSTEK", "İTİRAF", "İTİRAZ", "İZİN", "JEST",
+    "KABAK", "KABİNE", "KABUK", "KADRO", "KAFES", "KAGİR", "KAHVE", "KALDIRIM", "KALİTE", "KALP",
+    "KAMYON", "KANTAR", "KANUN", "KAPIKULE", "KARANLIK", "KARGO", "KARİYER", "KASKO", "KATKI", "KAVRAM",
+    "KAYIT", "KAZAN", "KEDER", "KEMER", "KENT", "KERATA", "KESİK", "KILAVUZ", "KIRMIZI", "KISIM",
+    "KİTLE", "KLASİK", "KLAVYE", "KOCA", "KOLEJ", "KOMUTAN", "KONFERANS", "KONUK", "KONUŞMA", "KOPMA",
+    "KORKU", "KORUMA", "KOSKOCAMAN", "KÖKEN", "KÖPRÜ", "KÜFE", "KÜLTÜR", "KÜPE", "LABORATUVAR", "LAHMACUN", 
+    "LALE","LAMBA","LİMON","LOKMA","LİRA","LEVHA","LEBLEBİ","MASA","MAKAS","MANTAR","MARTI","MEYVE","MISIR",
+    "MEKTUP","NAR","NANE","NOBEL","NOT","NİSAN","NEHİR","NOKTA","OKUL","ODA","ORMAN","OTOBÜS","OYUN",
+    "ORKESTRA","OPERATÖR","ÖLÜM","ÖRNEK","ÖZGÜR","ÖĞRETMEN","ÖRDEK","ÖMÜR","ÖĞE","PARK","PENCERE","PİLAV",
+    "PALTO","PİYANO","PASTA","PAZAR","RADYO","RENK","RÜYA","RESİM","ROBOT","ROKET","RÜZGAR","SANDALYE",
+    "SAYFA","SORU","SÜT","SICAK","SOKAK","SALATA","ŞEMSİYE","ŞEHİR","ŞARKI","ŞANS","ŞİİR","ŞOFÖR","ŞERİT",
+    "TABAK","TAKSİ","TREN","TELEFON","TATİL","TOPRAK","TENCERE","UÇAK","UÇURUM","UĞUR","UZUN","UYUM","USUL",
+    "ÜZÜM","ÜTÜ","ÜLKE","ÜMİT","ÜST","ÜRETİM","VAZO","VAGON","VELİ","VAPUR","VİTES","VİZYON","YAYLA","YILDIZ",
+    "YEMEK","YAZILIM","YÜZÜK","YOKUŞ","ZAMAN","ZEKA","ZİNCİR","ZEBRA","ZAR","ZEYTİN"];
+    const bulunanKelimelerKumesi = new Set();
+    let baslangicKelime = "";
+    let kalanHarfler = [];
+    let skor = 0;
+
+    // SABİT HÜCRE KONUMU
+    const sabitPozisyonlar = [[2,2], [2,4], [4,2], [4,4]];
+
+    /*
+    TAHTAYI OLUŞTUR
+    */
+    function tahtaOlustur() {
+      const oyunTahtasi = document.getElementById('gameBoard');
+      oyunTahtasi.innerHTML = '';
+      for (let satir = 0; satir < tahtaBoyutu; satir++) {
+        for (let sutun = 0; sutun < tahtaBoyutu; sutun++) {
+          const hucre = document.createElement('div');
+          hucre.className = 'cell';
+          hucre.dataset.row = satir;
+          hucre.dataset.col = sutun;
+
+          const sabitMi = sabitPozisyonlar.some(([sr, sc]) => sr === satir && sc === sutun);
+          hucre.dataset.fixed = sabitMi;
+
+          if (sabitMi && tahta[satir][sutun] === '') {
+            tahta[satir][sutun] = rastgeleHarf();
+          }
+
+          hucre.textContent = tahta[satir][sutun];
+
+          hucre.ondragover = e => e.preventDefault();
+          hucre.ondrop = e => {
+            if (hucre.dataset.fixed === 'true') return;
+            harfBirak(e);
+          };
+
+          oyunTahtasi.appendChild(hucre);
+        }
+      }
+    }
+
+    /*
+    HARF RAYINI OLUŞTUR
+    */
+    function rafOlustur() {
+      const harfRafi = document.getElementById('letterRack');
+      harfRafi.innerHTML = '';
+
+      if (!baslangicKelime) {
+        baslangicKelime = kelimeListesi[Math.floor(Math.random() * kelimeListesi.length)];
+        kalanHarfler = baslangicKelime.split('');
+        const karisik = [...kalanHarfler].sort(() => Math.random() - 0.5);
+        rafHarfler.splice(0, rafHarfler.length, ...karisik);
+
+        while (rafHarfler.length < 7) {
+          rafHarfler.push(rastgeleHarf());
+        }
+      }
+
+      rafGuncelle();
+    }
+
+    /*
+    HARF RAYINI GÜNCELLE
+    */
+    function rafGuncelle() {
+      const harfRafi = document.getElementById('letterRack');
+      harfRafi.innerHTML = '';
+      rafHarfler.forEach((harf, indis) => {
+        const kutu = document.createElement('div');
+        kutu.className = 'tile';
+        kutu.textContent = harf;
+        kutu.draggable = true;
+        kutu.id = `tile-${indis}`;
+        kutu.ondragstart = e => {
+          e.dataTransfer.setData('text/plain', JSON.stringify({ harf, indis }));
+        };
+        harfRafi.appendChild(kutu);
+      });
+    }
+
+    /*
+    HARF BIRAKMA İŞLEMİ
+    */
+    function harfBirak(e) {
+      const hucre = e.currentTarget;
+      const satir = parseInt(hucre.dataset.row);
+      const sutun = parseInt(hucre.dataset.col);
+      const veri = JSON.parse(e.dataTransfer.getData('text/plain'));
+      const harf = veri.harf;
+      const indis = veri.indis;
+
+      if (tahta[satir][sutun] === '') {
+        tahta[satir][sutun] = harf;
+
+        const idx = kalanHarfler.indexOf(harf);
+        if (idx !== -1) kalanHarfler.splice(idx, 1);
+
+        if (kalanHarfler.length > 0) {
+          const yedek = kalanHarfler.splice(Math.floor(Math.random() * kalanHarfler.length), 1)[0];
+          rafHarfler[indis] = yedek;
+        } else {
+          rafHarfler[indis] = rastgeleHarf();
+        }
+
+        tahtaOlustur();
+        rafGuncelle();
+        kelimeleriKontrolEt();
+      }
+    }
+
+    /*
+    BULUNAN KELİMELERİ KONTROL ET
+    */
+   function kelimeleriKontrolEt() {
+      let bulunan = [];
+      // Satırlar
+      for (let satir = 0; satir < tahtaBoyutu; satir++) {
+        const satirMetni = tahta[satir].join('');
+        bulunan.push(...satirKelimeBul(satirMetni));
+      }
+      // Sütunlar
+      for (let sutun = 0; sutun < tahtaBoyutu; sutun++) {
+        let sutunMetni = '';
+        for (let satir = 0; satir < tahtaBoyutu; satir++) {
+          sutunMetni += tahta[satir][sutun];
+        }
+        bulunan.push(...satirKelimeBul(sutunMetni));
+      }
+      const bulunanTekil = Array.from(new Set(bulunan));
+
+      //Daha önce bulunmamış olanları ayıkla
+      const tamamenYeni = bulunanTekil.filter(kelime => !bulunanKelimelerKumesi.has(kelime));
+
+      //Eğer gerçekten yeni kelime varsa, sadece bir kez ses çal
+      if (tamamenYeni.length > 0) {
+        const kelimeSesi = document.getElementById('wordSound');
+        kelimeSesi.currentTime = 0;
+        kelimeSesi.play().catch(() => {});
+      }
+
+      //Yeni kelimeleri kümeye ekle
+      tamamenYeni.forEach(k => bulunanKelimelerKumesi.add(k));
+
+      //Ekrandaki listeyi ve skoru güncelle
+      document.getElementById('wordListDisplay').innerHTML =
+        Array.from(bulunanKelimelerKumesi)
+            .map(w => `<div>${w}</div>`)
+            .join('');
+      skor = bulunanKelimelerKumesi.size * 10;
+      document.getElementById('scoreDisplay').textContent = `Skor: ${skor}`;
+    }
+    /*
+    SATIR METNİNDE KELİME BUL
+    */
+    function satirKelimeBul(metin) {
+      const sonuc = [];
+      for (let i = 0; i < metin.length; i++) {
+        for (let j = i + 2; j <= metin.length; j++) {
+          const alt = metin.slice(i, j);
+          if (kelimeListesi.includes(alt)) {
+            sonuc.push(alt);
+          }
+        }
+      }
+      return sonuc;
+    }
+
+    /*
+    RASTGELE TÜRKÇE HARF SEÇ
+    */
+    function rastgeleHarf() {
+      return turkceHarfler[Math.floor(Math.random() * turkceHarfler.length)];
+    }
+
+    // Başlangıçta oluştur
+    tahtaOlustur();
+    rafOlustur();
+
+    // Kullanıcı tıklayınca müziği aç
+    window.addEventListener('click', () => {
+      arkaPlanMuzigi.muted = false;
+      arkaPlanMuzigi.play().catch(() => {});
+    }, { once: true });
+
+    // Tıklama sesi
+    document.addEventListener('click', () => {
+      const tiklamaSesi = document.getElementById('clickSound');
+      tiklamaSesi.currentTime = 0;
+      tiklamaSesi.play().catch(() => {});
+    });
+
+    // Başlangıç ekranını gizle
+    function oyunuBaslat() {
+      const baslangicEkrani = document.getElementById('startScreen');
+      if (baslangicEkrani) baslangicEkrani.style.display = 'none';
+    }
+
+    /*
+    CANVAS ÜZERİNDE DEKORATİF ÇEMBER ÇİZİMİ
+    */
+    const tuval = document.getElementById('canvasLayer');
+    const baglam = tuval.getContext('2d');
+
+    function tuvaliBoyutla() {
+      tuval.width = window.innerWidth;
+      tuval.height = window.innerHeight;
+    }
+    window.addEventListener('resize', tuvaliBoyutla);
+    tuvaliBoyutla();
+
+    function cemberCiz() {
+      baglam.clearRect(0, 0, tuval.width, tuval.height);
+      baglam.fillStyle = 'rgba(100,100,100,0.3)';
+      for (let i = 0; i < 10; i++) {
+        const x = Math.random() * tuval.width;
+        const y = Math.random() * tuval.height;
+        const r = Math.random() * 10 + 5;
+        baglam.beginPath();
+        baglam.arc(x, y, r, 0, Math.PI * 2);
+        baglam.fill();
+      }
+    }
+    setInterval(cemberCiz, 1000);
+  </script>
+
+  <!-- TIKLAMALARDA CLICK SESİ -->
+  <audio id="clickSound">
+    <source src="click.mp3" type="audio/mpeg">
+  </audio>
+  <!-- KELİME BULUNDUĞUNDA SES -->
+  <audio id="wordSound">
+    <source src="kelime_dogru.mp3" type="audio/mpeg">
+  </audio>
+</body>
+</html>
+
