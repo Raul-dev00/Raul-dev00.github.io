@@ -69,3 +69,6 @@ Web Audio API ile ses yönetimi
 Responsive: Tam ekran, video arkaplan ve mobil uyumlu grid
 
 # Keyifli kelime avları!
+
+![Ekran görüntüsü 2025-05-25 192310](https://github.com/user-attachments/assets/a3cb53df-f01c-461a-8720-a450f0548617)
+
