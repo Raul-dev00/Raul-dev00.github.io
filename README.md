@@ -80,6 +80,12 @@ Responsive: Tam ekran, video arkaplan ve mobil uyumlu grid
 # Oynanış Videosu
 https://www.youtube.com/watch?v=Ae-gq3AkgAo
 
+# Oyunun Linki
+https://raul-dev00.github.io/web_oyun
+
+# Jam Oyun Linki
+https://anttihaavikko.itch.io/claustrowordia
+
 # Keyifli kelime avları!
 
 
